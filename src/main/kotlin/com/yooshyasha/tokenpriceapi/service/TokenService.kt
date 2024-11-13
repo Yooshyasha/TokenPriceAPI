@@ -12,6 +12,22 @@ class TokenService(
 ) {
     val restTemplate: RestTemplate = RestTemplate()
 
+    fun getToken(tokenIdsParam: String?) {
+        val url = "https://api.coingecko.com/api/v3/simple/price?ids=$tokenIdsParam&vs_currencies=usd"
+
+        val response: Map<String, Map<String, Double>>? =
+            restTemplate.getForObject(url, Map::class.java) as? Map<String, Map<String, Double>>
+
+        response?.forEach { (tokenName, priceData) ->
+            val usdPrice = priceData["usd"]
+            if (usdPrice != null) {
+                val token = tokenRepository.findByTokenName(tokenName) ?: Token(tokenName = tokenName)
+                token.price = usdPrice
+                tokenRepository.save(token)
+            }
+        }
+    }
+
     private fun fetchAllTokens(): List<String> {
         val url = "https://api.coingecko.com/api/v3/coins/list"
         val response: List<Map<String, Any>>? =
@@ -30,19 +46,7 @@ class TokenService(
 
         tokenIds.chunked(250).forEach { chunk ->
             val tokenIdsParam = chunk.joinToString(",")
-            val url = "https://api.coingecko.com/api/v3/simple/price?ids=$tokenIdsParam&vs_currencies=usd"
-
-            val response: Map<String, Map<String, Double>>? =
-                restTemplate.getForObject(url, Map::class.java) as? Map<String, Map<String, Double>>
-
-            response?.forEach { (tokenName, priceData) ->
-                val usdPrice = priceData["usd"]
-                if (usdPrice != null) {
-                    val token = tokenRepository.findByTokenName(tokenName) ?: Token(tokenName = tokenName)
-                    token.price = usdPrice
-                    tokenRepository.save(token)
-                }
-            }
+            getToken(tokenIdsParam)
         }
 
         println("Обновление токенов завершено")
