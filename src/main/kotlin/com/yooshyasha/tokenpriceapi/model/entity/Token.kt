@@ -9,6 +9,6 @@ data class Token (
     var id: Long? = null,
 
     @Column(name = "TokenName")
-    var tokenName: String? = null,
-    var price: Double? = null,
+    var tokenName: String = "",
+    var price: Double = 0.0,
 )

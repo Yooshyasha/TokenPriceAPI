@@ -1,5 +1,6 @@
 package com.yooshyasha.tokenpriceapi.service
 
+import com.yooshyasha.tokenpriceapi.model.dto.TokenDTO
 import com.yooshyasha.tokenpriceapi.model.entity.Token
 import com.yooshyasha.tokenpriceapi.repository.TokenRepository
 import org.springframework.scheduling.annotation.Scheduled
@@ -12,23 +13,41 @@ class TokenService(
 ) {
     val restTemplate: RestTemplate = RestTemplate()
 
-    fun getToken(tokenIdsParam: String?) {
-        val url = "https://api.coingecko.com/api/v3/simple/price?ids=$tokenIdsParam&vs_currencies=usd"
+    fun getTokenPrice(token: String): Double? {
+        val url = "https://api.coingecko.com/api/v3/simple/price?ids=$token&vs_currencies=usd"
 
         val response: Map<String, Map<String, Double>>? =
             restTemplate.getForObject(url, Map::class.java) as? Map<String, Map<String, Double>>
 
-        response?.forEach { (tokenName, priceData) ->
+        response?.forEach { (_, priceData) ->
             val usdPrice = priceData["usd"]
             if (usdPrice != null) {
-                val token = tokenRepository.findByTokenName(tokenName) ?: Token(tokenName = tokenName)
-                token.price = usdPrice
-                tokenRepository.save(token)
+                return usdPrice
             }
         }
+
+        return null
     }
 
-    private fun fetchAllTokens(): List<String> {
+    private fun updateToken(tokenIdsParam: String) {
+        val token = tokenRepository.findByTokenName(tokenIdsParam)
+            ?: Token(tokenName = tokenIdsParam)
+
+        val tokenPrice = getTokenPrice(tokenIdsParam) ?: return
+        token.price = tokenPrice
+
+        tokenRepository.save(token)
+    }
+
+    fun getToken(tokenName: String) : Token? {
+        return tokenRepository.findByTokenName(tokenName)
+    }
+
+    fun convertTokenToDTO(token: Token) : TokenDTO {
+        return TokenDTO(name = token.tokenName, price = token.price)
+    }
+
+    fun fetchAllTokens(): List<String> {
         val url = "https://api.coingecko.com/api/v3/coins/list"
         val response: List<Map<String, Any>>? =
             restTemplate.getForObject(url, List::class.java) as? List<Map<String, Any>>
@@ -36,8 +55,22 @@ class TokenService(
         return response?.mapNotNull { it["id"] as? String } ?: emptyList()
     }
 
+    fun getAllTokens(): List<TokenDTO> {
+        val result = mutableListOf<TokenDTO>()
+
+        val tokens = fetchAllTokens()
+
+        tokens.forEach { token ->
+            val tokenPrice = getTokenPrice(token) ?: return@forEach
+
+            result.add(TokenDTO(name = token, price = tokenPrice))
+        }
+
+        return result
+    }
+
     @Scheduled(cron = "0 */10 * * * *")
-    private fun updateTokens() {
+    private fun updateToken() {
         val tokenIds = fetchAllTokens()
         if (tokenIds.isEmpty()) {
             println("Не удалось получить список токенов")
@@ -46,7 +79,7 @@ class TokenService(
 
         tokenIds.chunked(250).forEach { chunk ->
             val tokenIdsParam = chunk.joinToString(",")
-            getToken(tokenIdsParam)
+            updateToken(tokenIdsParam)
         }
 
         println("Обновление токенов завершено")
