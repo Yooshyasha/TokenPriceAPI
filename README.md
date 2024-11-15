@@ -11,6 +11,49 @@
 - **Git**: для клонирования репозитория.
 - **Операционная система**: Windows, macOS или Linux.
 
+## Установка базы данных PostgreSQL
+
+1. **Скачайте и установите PostgreSQL**:
+   - Перейдите на [официальный сайт PostgreSQL](https://www.postgresql.org/download/) и скачайте подходящую версию для вашей ОС.
+   - Установите PostgreSQL, следуя инструкциям установщика. Запомните логин, пароль и имя создаваемой базы данных.
+
+2. **Создайте базу данных**:
+   После установки PostgreSQL откройте консоль `psql` или другой инструмент управления (например, PgAdmin) и выполните следующие команды:
+   ```sql
+   CREATE DATABASE token_price_api;
+   CREATE USER api_user WITH PASSWORD 'secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE token_price_api TO api_user;
+
+Замените secure_password на сложный пароль.
+
+## Настройка подключения к базе данных
+
+1. Откройте файл конфигурации приложения (например, `application.yml` или `application.properties` в зависимости от проекта).
+
+2. Добавьте или измените настройки подключения:
+
+   Для `application.yml`:
+   ```yaml
+   spring:
+     datasource:
+       url: jdbc:postgresql://localhost:5432/token_price_api
+       username: api_user
+       password: secure_password
+     jpa:
+       hibernate:
+         ddl-auto: update
+   ```
+
+   Для `application.properties`:
+   ```properties
+   spring.datasource.url=jdbc:postgresql://localhost:5432/token_price_api
+   spring.datasource.username=api_user
+   spring.datasource.password=secure_password
+   spring.jpa.hibernate.ddl-auto=update
+   ```
+
+3. Убедитесь, что вы указали правильный порт и данные пользователя.
+
 ## Сборка проекта
 
 1. **Клонируйте репозиторий:**
