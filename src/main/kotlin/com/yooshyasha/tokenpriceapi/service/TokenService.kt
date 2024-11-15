@@ -5,6 +5,7 @@ import com.yooshyasha.tokenpriceapi.model.entity.Token
 import com.yooshyasha.tokenpriceapi.repository.TokenRepository
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 
 @Service
@@ -14,19 +15,20 @@ class TokenService(
     val restTemplate: RestTemplate = RestTemplate()
 
     fun getTokenPrice(token: String): Double? {
-        val url = "https://api.coingecko.com/api/v3/simple/price?ids=$token&vs_currencies=usd"
+        try {
+            val url = "https://api.coingecko.com/api/v3/simple/price?ids=$token&vs_currencies=usd"
+            val response: Map<String, Map<String, Double>>? =
+                restTemplate.getForObject(url, Map::class.java) as? Map<String, Map<String, Double>>
 
-        val response: Map<String, Map<String, Double>>? =
-            restTemplate.getForObject(url, Map::class.java) as? Map<String, Map<String, Double>>
-
-        response?.forEach { (_, priceData) ->
-            val usdPrice = priceData["usd"]
-            if (usdPrice != null) {
-                return usdPrice
-            }
+            return response?.get(token)?.get("usd")
+        } catch (e: HttpClientErrorException.TooManyRequests) {
+            // Задержка перед повторной попыткой, если возникает ошибка 429
+            Thread.sleep(3000)
+            return getTokenPrice(token)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
         }
-
-        return null
     }
 
     private fun updateToken(tokenIdsParam: String) {

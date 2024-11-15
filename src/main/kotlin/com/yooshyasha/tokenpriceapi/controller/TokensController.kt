@@ -25,6 +25,6 @@ class TokensController(
 
     @GetMapping("/{symbol}/history")
     fun getTokenHistory(@PathVariable symbol: String) : ResponseEntity<List<TokenDTO>> {
-        return ResponseEntity.ok()
+        return ResponseEntity.ok(null)
     }
 }
